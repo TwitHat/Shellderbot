@@ -10,6 +10,8 @@
 ![logo](https://telegra.ph/file/0dd4a92bb893c1aaa6cee.jpg)
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+[![Run on Google
+Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run/?git_repo=https://github.com/GoogleCloudPlatform/cloud-run-hello.git)
 
 A modular telegram Python bot running on python3 with an sqlalchemy database.
 
