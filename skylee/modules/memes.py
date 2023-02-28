@@ -31,23 +31,20 @@ def slap(update, context):
 
     # get user who sent message
     if msg.from_user.username:
-        curr_user = "@" + escape_markdown(msg.from_user.username)
+        curr_user = f"@{escape_markdown(msg.from_user.username)}"
     else:
-        curr_user = "[{}](tg://user?id={})".format(msg.from_user.first_name, msg.from_user.id)
+        curr_user = f"[{msg.from_user.first_name}](tg://user?id={msg.from_user.id})"
 
-    user_id = extract_user(update.effective_message, args)
-    if user_id:
+    if user_id := extract_user(update.effective_message, args):
         slapped_user = context.bot.get_chat(user_id)
         user1 = curr_user
         if slapped_user.username:
-            user2 = "@" + escape_markdown(slapped_user.username)
+            user2 = f"@{escape_markdown(slapped_user.username)}"
         else:
-            user2 = "[{}](tg://user?id={})".format(slapped_user.first_name,
-                                                   slapped_user.id)
+            user2 = f"[{slapped_user.first_name}](tg://user?id={slapped_user.id})"
 
-    # if no target found, bot targets the sender
     else:
-        user1 = "[{}](tg://user?id={})".format(context.bot.first_name, context.bot.id)
+        user1 = f"[{context.bot.first_name}](tg://user?id={context.bot.id})"
         user2 = curr_user
 
     temp = random.choice(fun.SLAP_TEMPLATES)
@@ -71,23 +68,20 @@ def punch(update, context):
 
     # get user who sent message
     if msg.from_user.username:
-        curr_user = "@" + escape_markdown(msg.from_user.username)
+        curr_user = f"@{escape_markdown(msg.from_user.username)}"
     else:
-        curr_user = "[{}](tg://user?id={})".format(msg.from_user.first_name, msg.from_user.id)
+        curr_user = f"[{msg.from_user.first_name}](tg://user?id={msg.from_user.id})"
 
-    user_id = extract_user(update.effective_message, args)
-    if user_id:
+    if user_id := extract_user(update.effective_message, args):
         punched_user = context.bot.get_chat(user_id)
         user1 = curr_user
         if punched_user.username:
-            user2 = "@" + escape_markdown(punched_user.username)
+            user2 = f"@{escape_markdown(punched_user.username)}"
         else:
-            user2 = "[{}](tg://user?id={})".format(punched_user.first_name,
-                                                   punched_user.id)
+            user2 = f"[{punched_user.first_name}](tg://user?id={punched_user.id})"
 
-    # if no target found, bot targets the sender
     else:
-        user1 = "[{}](tg://user?id={})".format(context.bot.first_name, context.bot.id)
+        user1 = f"[{context.bot.first_name}](tg://user?id={context.bot.id})"
         user2 = curr_user
 
     temp = random.choice(fun.PUNCH_TEMPLATES)
@@ -111,23 +105,20 @@ def hug(update, context):
 
     # get user who sent message
     if msg.from_user.username:
-        curr_user = "@" + escape_markdown(msg.from_user.username)
+        curr_user = f"@{escape_markdown(msg.from_user.username)}"
     else:
-        curr_user = "[{}](tg://user?id={})".format(msg.from_user.first_name, msg.from_user.id)
+        curr_user = f"[{msg.from_user.first_name}](tg://user?id={msg.from_user.id})"
 
-    user_id = extract_user(update.effective_message, args)
-    if user_id:
+    if user_id := extract_user(update.effective_message, args):
         hugged_user = context.bot.get_chat(user_id)
         user1 = curr_user
         if hugged_user.username:
-            user2 = "@" + escape_markdown(hugged_user.username)
+            user2 = f"@{escape_markdown(hugged_user.username)}"
         else:
-            user2 = "[{}](tg://user?id={})".format(hugged_user.first_name,
-                                                   hugged_user.id)
+            user2 = f"[{hugged_user.first_name}](tg://user?id={hugged_user.id})"
 
-    # if no target found, bot targets the sender
     else:
-        user1 = "Awwh! [{}](tg://user?id={})".format(context.bot.first_name, context.bot.id)
+        user1 = f"Awwh! [{context.bot.first_name}](tg://user?id={context.bot.id})"
         user2 = curr_user
 
     temp = random.choice(fun.HUG_TEMPLATES)
@@ -202,12 +193,12 @@ def recite(update, context):
 @typing_action
 def gbun(update, context):
     user = update.effective_user
-    chat = update.effective_chat
-
     if update.effective_message.chat.type == "private":
        return
     if int(user.id) in SUDO_USERS or int(user.id) in SUPPORT_USERS:
-       context.bot.sendMessage(chat.id, (random.choice(fun.GBUN)))
+        chat = update.effective_chat
+
+        context.bot.sendMessage(chat.id, (random.choice(fun.GBUN)))
 
 @run_async
 @typing_action
@@ -221,9 +212,9 @@ def snipe(update, context):
     to_send = " ".join(args)
     if len(to_send) >= 2:
         try:
-            context.bot.sendMessage(int(chat_id), str(to_send))
+            context.bot.sendMessage(int(chat_id), to_send)
         except TelegramError:
-            LOGGER.warning("Couldn't send to group %s", str(chat_id))
+            LOGGER.warning("Couldn't send to group %s", chat_id)
             update.effective_message.reply_text("Couldn't send the message. Perhaps I'm not part of that group?")
 
 
@@ -246,10 +237,7 @@ def copypasta(update, context):
             elif c.lower() == b_char:
                 reply_text += "🅱️"
             else:
-                if bool(random.getrandbits(1)):
-                    reply_text += c.upper()
-                else:
-                    reply_text += c.lower()
+                reply_text += c.upper() if bool(random.getrandbits(1)) else c.lower()
         reply_text += random.choice(emojis)
         message.reply_to_message.reply_text(reply_text)
 
@@ -283,11 +271,11 @@ def owo(update, context):
         reply_text = re.sub(r'ｎ([ａｅｉｏｕ])', r'ｎｙ\1', reply_text)
         reply_text = re.sub(r'N([aeiouAEIOU])', r'Ny\1', reply_text)
         reply_text = re.sub(r'Ｎ([ａｅｉｏｕＡＥＩＯＵ])', r'Ｎｙ\1', reply_text)
-        reply_text = re.sub(r'\!+', ' ' + random.choice(faces), reply_text)
-        reply_text = re.sub(r'！+', ' ' + random.choice(faces), reply_text)
+        reply_text = re.sub(r'\!+', f' {random.choice(faces)}', reply_text)
+        reply_text = re.sub(r'！+', f' {random.choice(faces)}', reply_text)
         reply_text = reply_text.replace("ove", "uv")
         reply_text = reply_text.replace("ｏｖｅ", "ｕｖ")
-        reply_text += ' ' + random.choice(faces)
+        reply_text += f' {random.choice(faces)}'
         message.reply_to_message.reply_text(reply_text)
 
 
@@ -338,17 +326,19 @@ def ports_bug(update, context):
 
     PORT_GRP = [-1001297379754, -1001469684768]
 
-    if not int(chat.id) in PORT_GRP:
+    if int(chat.id) not in PORT_GRP:
         return
 
     if not bug:
         message.reply_text("Submitting empty bug report won't do anything!")
         return
 
-    if bug:
-        context.bot.sendMessage(-1001495581911, "<b>NEW BUG REPORT!</b>\n\n<b>Submitted by</b>: {}.\n\nDescription: <code>{}</code>.".format(
-                                mention_html(user.id, user.first_name), bug), parse_mode=ParseMode.HTML)
-        message.reply_text("Successfully submitted bug report!")
+    context.bot.sendMessage(
+        -1001495581911,
+        f"<b>NEW BUG REPORT!</b>\n\n<b>Submitted by</b>: {mention_html(user.id, user.first_name)}.\n\nDescription: <code>{bug}</code>.",
+        parse_mode=ParseMode.HTML,
+    )
+    message.reply_text("Successfully submitted bug report!")
 
 
 __help__ = """

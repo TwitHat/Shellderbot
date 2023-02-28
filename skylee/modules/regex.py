@@ -12,49 +12,45 @@ DELIMITERS = ("/", ":", "|", "_")
 def infinite_checker(repl):
      regex = [r'\((.{1,}[\+\*]){1,}\)[\+\*].', r'[\(\[].{1,}\{\d(,)?\}[\)\]]\{\d(,)?\}', r'\(.{1,}\)\{.{1,}(,)?\}\(.*\)(\+|\* |\{.*\})']
      for match in regex:
-          status = re.search(match, repl)
-          if status:
-             return True
-          else:
-             return False
+          return bool(status := re.search(match, repl))
 
 
 def separate_sed(sed_string):
-    if len(sed_string) >= 3 and sed_string[1] in DELIMITERS and sed_string.count(sed_string[1]) >= 2:
-        delim = sed_string[1]
-        start = counter = 2
-        while counter < len(sed_string):
-            if sed_string[counter] == "\\":
-                counter += 1
+     if (len(sed_string) < 3 or sed_string[1] not in DELIMITERS
+         or sed_string.count(sed_string[1]) < 2):
+          return
+     delim = sed_string[1]
+     start = counter = 2
+     while counter < len(sed_string):
+         if sed_string[counter] == "\\":
+             counter += 1
 
-            elif sed_string[counter] == delim:
-                replace = sed_string[start:counter]
-                counter += 1
-                start = counter
-                break
+         elif sed_string[counter] == delim:
+             replace = sed_string[start:counter]
+             counter += 1
+             start = counter
+             break
 
-            counter += 1
+         counter += 1
 
-        else:
-            return None
+     else:
+         return None
 
-        while counter < len(sed_string):
-            if sed_string[counter] == "\\" and counter + 1 < len(sed_string) and sed_string[counter + 1] == delim:
-                sed_string = sed_string[:counter] + sed_string[counter + 1:]
+     while counter < len(sed_string):
+         if sed_string[counter] == "\\" and counter + 1 < len(sed_string) and sed_string[counter + 1] == delim:
+             sed_string = sed_string[:counter] + sed_string[counter + 1:]
 
-            elif sed_string[counter] == delim:
-                replace_with = sed_string[start:counter]
-                counter += 1
-                break
+         elif sed_string[counter] == delim:
+             replace_with = sed_string[start:counter]
+             counter += 1
+             break
 
-            counter += 1
-        else:
-            return replace, sed_string[start:], ""
+         counter += 1
+     else:
+         return replace, sed_string[start:], ""
 
-        flags = ""
-        if counter < len(sed_string):
-            flags = sed_string[counter:]
-        return replace, replace_with, flags.lower()
+     flags = sed_string[counter:] if counter < len(sed_string) else ""
+     return replace, replace_with, flags.lower()
 
 
 @run_async
@@ -104,6 +100,7 @@ def sed(update, context):
 
 
 
-SED_HANDLER = DisableAbleMessageHandler(Filters.regex(r's([{}]).*?\1.*'.format("".join(DELIMITERS))), sed, friendly="sed")
+SED_HANDLER = DisableAbleMessageHandler(
+    Filters.regex(f's([{"".join(DELIMITERS)}]).*?\1.*'), sed, friendly="sed")
 
 dispatcher.add_handler(SED_HANDLER)

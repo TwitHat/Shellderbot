@@ -48,8 +48,7 @@ def get(bot, update, notename, show_none=True, no_format=False):
     chat_id = update.effective_chat.id
     chat = update.effective_chat  # type: Optional[Chat]
     user = update.effective_user  # type: Optional[User]
-    conn = connected(bot, update, chat, user.id, need_admin=False)
-    if conn:
+    if conn := connected(bot, update, chat, user.id, need_admin=False):
         chat_id = conn
         send_id = user.id
     else:
@@ -71,33 +70,56 @@ def get(bot, update, notename, show_none=True, no_format=False):
                 try:
                     bot.forward_message(chat_id=update.effective_chat.id, from_chat_id=MESSAGE_DUMP, message_id=note.value)
                 except BadRequest as excp:
-                    if excp.message == "Message to forward not found":
-                        message.reply_text("This message seems to have been lost - I'll remove it "
-                                           "from your notes list.")
-                        sql.rm_note(chat_id, notename)
-                    else:
+                    if excp.message != "Message to forward not found":
                         raise
+                    message.reply_text("This message seems to have been lost - I'll remove it "
+                                       "from your notes list.")
+                    sql.rm_note(chat_id, notename)
             else:
                 try:
                     bot.forward_message(chat_id=update.effective_chat.id, from_chat_id=chat_id, message_id=note.value)
                 except BadRequest as excp:
-                    if excp.message == "Message to forward not found":
-                        message.reply_text("Looks like the original sender of this note has deleted "
-                                           "their message - sorry! Get your bot admin to start using a "
-                                           "message dump to avoid this. I'll remove this note from "
-                                           "your saved notes.")
-                        sql.rm_note(chat_id, notename)
-                    else:
+                    if excp.message != "Message to forward not found":
                         raise
+                    message.reply_text("Looks like the original sender of this note has deleted "
+                                       "their message - sorry! Get your bot admin to start using a "
+                                       "message dump to avoid this. I'll remove this note from "
+                                       "your saved notes.")
+                    sql.rm_note(chat_id, notename)
         else:
             VALID_NOTE_FORMATTERS = ['first', 'last', 'fullname', 'username', 'id', 'chatname', 'mention']
-            valid_format = escape_invalid_curly_brackets(note.value, VALID_NOTE_FORMATTERS)
-            if valid_format:
-                    text = valid_format.format(first=escape(message.from_user.first_name),
-                                                                              last=escape(message.from_user.last_name or message.from_user.first_name),
-                                                                              fullname=" ".join([escape(message.from_user.first_name), escape(message.from_user.last_name)] if message.from_user.last_name else [escape(message.from_user.first_name)]), username="@" + escape(message.from_user.username) if message.from_user.username else mention_html(message.from_user.id, message.from_user.first_name), mention=mention_html(message.from_user.id, message.from_user.first_name), chatname=escape(message.chat.title) if message.chat.type != "private" else escape(message.from_user.first_name), id=message.from_user.id)
+            if valid_format := escape_invalid_curly_brackets(
+                note.value, VALID_NOTE_FORMATTERS
+            ):
+                text = valid_format.format(
+                    first=escape(message.from_user.first_name),
+                    last=escape(
+                        message.from_user.last_name
+                        or message.from_user.first_name
+                    ),
+                    fullname=" ".join(
+                        [
+                            escape(message.from_user.first_name),
+                            escape(message.from_user.last_name),
+                        ]
+                        if message.from_user.last_name
+                        else [escape(message.from_user.first_name)]
+                    ),
+                    username=f"@{escape(message.from_user.username)}"
+                    if message.from_user.username
+                    else mention_html(
+                        message.from_user.id, message.from_user.first_name
+                    ),
+                    mention=mention_html(
+                        message.from_user.id, message.from_user.first_name
+                    ),
+                    chatname=escape(message.chat.title)
+                    if message.chat.type != "private"
+                    else escape(message.from_user.first_name),
+                    id=message.from_user.id,
+                )
             else:
-                    text = ""
+                text = ""
 
             keyb = []
             parseMode = ParseMode.HTML
@@ -168,16 +190,12 @@ def save(update, context):
     chat = update.effective_chat  # type: Optional[Chat]
     user = update.effective_user  # type: Optional[User]
     conn = connected(context.bot, update, chat, user.id)
-    if not conn == False:
+    if conn != False:
         chat_id = conn
         chat_name = dispatcher.bot.getChat(conn).title
     else:
         chat_id = update.effective_chat.id
-        if chat.type == "private":
-            chat_name = "local notes"
-        else:
-            chat_name = chat.title
-
+        chat_name = "local notes" if chat.type == "private" else chat.title
     msg = update.effective_message
 
 
@@ -208,16 +226,12 @@ def clear(update, context):
     conn = connected(context.bot, update, chat, user.id)
     note_name, text, data_type, content, buttons = get_note_type(msg)
 
-    if not conn == False:
+    if conn != False:
         chat_id = conn
         chat_name = dispatcher.bot.getChat(conn).title
     else:
         chat_id = update.effective_chat.id
-        if chat.type == "private":
-            chat_name = "local notes"
-        else:
-            chat_name = chat.title
-
+        chat_name = "local notes" if chat.type == "private" else chat.title
     if len(args) >= 1:
         notename = args[0].lower()
 
@@ -234,7 +248,7 @@ def list_notes(update, context):
     chat = update.effective_chat  # type: Optional[Chat]
     user = update.effective_user  # type: Optional[User]
     conn = connected(context.bot, update, chat, user.id, need_admin=False)
-    if not conn == False:
+    if conn != False:
         chat_id = conn
         chat_name = dispatcher.bot.getChat(conn).title
         msg = "*Notes in {}:*\n"
@@ -250,7 +264,7 @@ def list_notes(update, context):
     note_list = sql.get_all_chat_notes(chat_id)
     des = "You can get notes by using `/get notename`, or `#notename`.\n"
     for note in note_list:
-        note_name = " × `{}`\n".format(note.name.lower())
+        note_name = f" × `{note.name.lower()}`\n"
         if len(msg) + len(note_name) > MAX_MESSAGE_LENGTH:
             update.effective_message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
             msg = ""
@@ -272,17 +286,16 @@ def clear_notes(update, context):
 
     chatmem = chat.get_member(user.id)
     if chatmem.status == 'creator':
-       allnotes = sql.get_all_chat_notes(chat.id)
-       if not allnotes:
-           msg.reply_text("No notes saved here what should i delete?")
-           return
-       else:
+        if allnotes := sql.get_all_chat_notes(chat.id):
             msg.reply_text(
              "Do you really wanna delete all of the notes??",
              reply_markup=InlineKeyboardMarkup(
              [[InlineKeyboardButton(text="Yes I'm sure️", callback_data="rmnotes_true")],
              [InlineKeyboardButton(text="⚠️ Cancel", callback_data="rmnotes_cancel")]]))
 
+        else:
+            msg.reply_text("No notes saved here what should i delete?")
+            return
     else:
         msg.reply_text("This command can be only used by chat OWNER!")
 
@@ -318,92 +331,83 @@ def rmbutton(update, context):
 
 
 def __import_data__(chat_id, data):
-        failures = []
-        for notename, notedata in data.get('extra', {}).items():
-                match = FILE_MATCHER.match(notedata)
-                matchsticker = STICKER_MATCHER.match(notedata)
-                matchbtn = BUTTON_MATCHER.match(notedata)
-                matchfile = MYFILE_MATCHER.match(notedata)
-                matchphoto = MYPHOTO_MATCHER.match(notedata)
-                matchaudio = MYAUDIO_MATCHER.match(notedata)
-                matchvoice = MYVOICE_MATCHER.match(notedata)
-                matchvideo = MYVIDEO_MATCHER.match(notedata)
-                matchvn = MYVIDEONOTE_MATCHER.match(notedata)
+    failures = []
+    for notename, notedata in data.get('extra', {}).items():
+        match = FILE_MATCHER.match(notedata)
+        matchsticker = STICKER_MATCHER.match(notedata)
+        matchbtn = BUTTON_MATCHER.match(notedata)
+        matchfile = MYFILE_MATCHER.match(notedata)
+        matchphoto = MYPHOTO_MATCHER.match(notedata)
+        matchaudio = MYAUDIO_MATCHER.match(notedata)
+        matchvoice = MYVOICE_MATCHER.match(notedata)
+        matchvideo = MYVIDEO_MATCHER.match(notedata)
+        matchvn = MYVIDEONOTE_MATCHER.match(notedata)
 
-                if match:
-                        failures.append(notename)
-                        notedata = notedata[match.end():].strip()
-                        if notedata:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.TEXT)
-                elif matchsticker:
-                        content = notedata[matchsticker.end():].strip()
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.STICKER, file=content)
-                elif matchbtn:
-                        parse = notedata[matchbtn.end():].strip()
-                        notedata = parse.split("<###button###>")[0]
-                        buttons = parse.split("<###button###>")[1]
-                        buttons = ast.literal_eval(buttons)
-                        if buttons:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.BUTTON_TEXT, buttons=buttons)
-                elif matchfile:
-                        file = notedata[matchfile.end():].strip()
-                        file = file.split("<###TYPESPLIT###>")
-                        notedata = file[1]
-                        content = file[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.DOCUMENT, file=content)
-                elif matchphoto:
-                        photo = notedata[matchphoto.end():].strip()
-                        photo = photo.split("<###TYPESPLIT###>")
-                        notedata = photo[1]
-                        content = photo[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.PHOTO, file=content)
-                elif matchaudio:
-                        audio = notedata[matchaudio.end():].strip()
-                        audio = audio.split("<###TYPESPLIT###>")
-                        notedata = audio[1]
-                        content = audio[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.AUDIO, file=content)
-                elif matchvoice:
-                        voice = notedata[matchvoice.end():].strip()
-                        voice = voice.split("<###TYPESPLIT###>")
-                        notedata = voice[1]
-                        content = voice[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VOICE, file=content)
-                elif matchvideo:
-                        video = notedata[matchvideo.end():].strip()
-                        video = video.split("<###TYPESPLIT###>")
-                        notedata = video[1]
-                        content = video[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VIDEO, file=content)
-                elif matchvn:
-                        video_note = notedata[matchvn.end():].strip()
-                        video_note = video_note.split("<###TYPESPLIT###>")
-                        notedata = video_note[1]
-                        content = video_note[0]
-                        if content:
-                                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VIDEO_NOTE, file=content)
-                else:
-                        sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.TEXT)
+        if match:
+            failures.append(notename)
+            if notedata := notedata[match.end() :].strip():
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.TEXT)
+        elif matchsticker:
+            if content := notedata[matchsticker.end() :].strip():
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.STICKER, file=content)
+        elif matchbtn:
+            parse = notedata[matchbtn.end():].strip()
+            notedata = parse.split("<###button###>")[0]
+            buttons = parse.split("<###button###>")[1]
+            if buttons := ast.literal_eval(buttons):
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.BUTTON_TEXT, buttons=buttons)
+        elif matchfile:
+            file = notedata[matchfile.end():].strip()
+            file = file.split("<###TYPESPLIT###>")
+            notedata = file[1]
+            if content := file[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.DOCUMENT, file=content)
+        elif matchphoto:
+            photo = notedata[matchphoto.end():].strip()
+            photo = photo.split("<###TYPESPLIT###>")
+            notedata = photo[1]
+            if content := photo[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.PHOTO, file=content)
+        elif matchaudio:
+            audio = notedata[matchaudio.end():].strip()
+            audio = audio.split("<###TYPESPLIT###>")
+            notedata = audio[1]
+            if content := audio[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.AUDIO, file=content)
+        elif matchvoice:
+            voice = notedata[matchvoice.end():].strip()
+            voice = voice.split("<###TYPESPLIT###>")
+            notedata = voice[1]
+            if content := voice[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VOICE, file=content)
+        elif matchvideo:
+            video = notedata[matchvideo.end():].strip()
+            video = video.split("<###TYPESPLIT###>")
+            notedata = video[1]
+            if content := video[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VIDEO, file=content)
+        elif matchvn:
+            video_note = notedata[matchvn.end():].strip()
+            video_note = video_note.split("<###TYPESPLIT###>")
+            notedata = video_note[1]
+            if content := video_note[0]:
+                sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.VIDEO_NOTE, file=content)
+        else:
+            sql.add_note_to_db(chat_id, notename[1:], notedata, sql.Types.TEXT)
 
-        if failures:
-                with BytesIO(str.encode("\n".join(failures))) as output:
-                        output.name = "failed_imports.txt"
-                        dispatcher.bot.send_document(chat_id, document=output, filename="failed_imports.txt",
-                                                      caption="These files/photos failed to import due to originating "
-                                                              "from another bot. This is a telegram API restriction, and can't "
-                                                              "be avoided. Sorry for the inconvenience!")
+    if failures:
+            with BytesIO(str.encode("\n".join(failures))) as output:
+                    output.name = "failed_imports.txt"
+                    dispatcher.bot.send_document(chat_id, document=output, filename="failed_imports.txt",
+                                                  caption="These files/photos failed to import due to originating "
+                                                          "from another bot. This is a telegram API restriction, and can't "
+                                                          "be avoided. Sorry for the inconvenience!")
 
 
 
 
 def __stats__():
-    return "× {} notes, across {} chats.".format(sql.num_notes(), sql.num_chats())
+    return f"× {sql.num_notes()} notes, across {sql.num_chats()} chats."
 
 
 def __migrate__(old_chat_id, new_chat_id):
@@ -412,7 +416,7 @@ def __migrate__(old_chat_id, new_chat_id):
 
 def __chat_settings__(chat_id, user_id):
     notes = sql.get_all_chat_notes(chat_id)
-    return "There are `{}` notes in this chat.".format(len(notes))
+    return f"There are `{len(notes)}` notes in this chat."
 
 
 __help__ = """

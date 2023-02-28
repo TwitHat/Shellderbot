@@ -41,7 +41,7 @@ def promote(update, context):
         return ""
 
     user_member = chat.get_member(user_id)
-    if user_member.status == 'administrator' or user_member.status == 'creator':
+    if user_member.status in ['administrator', 'creator']:
         message.reply_text("This person is already an admin...!")
         return ""
 
@@ -62,12 +62,7 @@ def promote(update, context):
                           can_pin_messages=bot_member.can_pin_messages)
 
     message.reply_text("Promoted🧡")
-    return "<b>{}:</b>" \
-           "\n#PROMOTED" \
-           "\n<b>Admin:</b> {}" \
-           "\n<b>User:</b> {}".format(html.escape(chat.title),
-                                      mention_html(user.id, user.first_name),
-                                      mention_html(user_member.user.id, user_member.user.first_name))
+    return f"<b>{html.escape(chat.title)}:</b>\n#PROMOTED\n<b>Admin:</b> {mention_html(user.id, user.first_name)}\n<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
 
 
 @run_async
@@ -96,7 +91,7 @@ def demote(update, context):
         message.reply_text("I'm not gonna demote Creator this group.... 🙄")
         return ""
 
-    if not user_member.status == 'administrator':
+    if user_member.status != 'administrator':
         message.reply_text("How I'm supposed to demote someone who is not even an admin!")
         return ""
 
@@ -114,12 +109,7 @@ def demote(update, context):
                               can_restrict_members=False,
                               can_pin_messages=False)
         message.reply_text("Successfully demoted!")
-        return "<b>{}:</b>" \
-               "\n#DEMOTED" \
-               "\n<b>Admin:</b> {}" \
-               "\n<b>User:</b> {}".format(html.escape(chat.title),
-                                          mention_html(user.id, user.first_name),
-                                          mention_html(user_member.user.id, user_member.user.first_name))
+        return f"<b>{html.escape(chat.title)}:</b>\n#DEMOTED\n<b>Admin:</b> {mention_html(user.id, user.first_name)}\n<b>User:</b> {mention_html(user_member.user.id, user_member.user.first_name)}"
 
     except BadRequest:
         message.reply_text("Failed to demote. I might not be admin, or the admin status was appointed by another "
@@ -139,7 +129,7 @@ def pin(update, context):
     chat = update.effective_chat
     message = update.effective_message
 
-    is_group = chat.type != "private" and chat.type != "channel"
+    is_group = chat.type not in ["private", "channel"]
 
     prev_message = update.effective_message.reply_to_message
 
@@ -147,21 +137,18 @@ def pin(update, context):
     	message.reply_text("You are missing rights to pin a message!")
     	return ""
 
-    is_silent = True
-    if len(args) >= 1:
-        is_silent = not (args[0].lower() == 'notify' or args[0].lower() == 'loud' or args[0].lower() == 'violent')
-
     if prev_message and is_group:
+        is_silent = (
+            args[0].lower() not in ['notify', 'loud', 'violent']
+            if len(args) >= 1
+            else True
+        )
         try:
             context.bot.pinChatMessage(chat.id, prev_message.message_id, disable_notification=is_silent)
         except BadRequest as excp:
-            if excp.message == "Chat_not_modified":
-                pass
-            else:
+            if excp.message != "Chat_not_modified":
                 raise
-        return "<b>{}:</b>" \
-               "\n#PINNED" \
-               "\n<b>Admin:</b> {}".format(html.escape(chat.title), mention_html(user.id, user.first_name))
+        return f"<b>{html.escape(chat.title)}:</b>\n#PINNED\n<b>Admin:</b> {mention_html(user.id, user.first_name)}"
 
     return ""
 
@@ -184,15 +171,10 @@ def unpin(update, context):
     try:
         context.bot.unpinChatMessage(chat.id)
     except BadRequest as excp:
-        if excp.message == "Chat_not_modified":
-            pass
-        else:
+        if excp.message != "Chat_not_modified":
             raise
 
-    return "<b>{}:</b>" \
-           "\n#UNPINNED" \
-           "\n<b>Admin:</b> {}".format(html.escape(chat.title),
-                                       mention_html(user.id, user.first_name))
+    return f"<b>{html.escape(chat.title)}:</b>\n#UNPINNED\n<b>Admin:</b> {mention_html(user.id, user.first_name)}"
 
 
 @run_async
@@ -200,51 +182,50 @@ def unpin(update, context):
 @user_admin
 @typing_action
 def invite(update, context):
-        user = update.effective_user
-        msg = update.effective_message
+    user = update.effective_user
+    msg = update.effective_message
+    chat = update.effective_chat
+    args = context.args
+
+    if conn := connected(context.bot, update, chat, user.id, need_admin=True):
+        chat = dispatcher.bot.getChat(conn)
+    else:
+        if msg.chat.type == "private":
+                msg.reply_text("This command is meant to use in chat not in PM")
+                return ""
         chat = update.effective_chat
-        args = context.args
 
-        conn = connected(context.bot, update, chat, user.id, need_admin=True)
-        if conn:
-                chat = dispatcher.bot.getChat(conn)
+    if chat.username:
+        msg.reply_text(chat.username)
+    elif chat.type in [chat.SUPERGROUP, chat.CHANNEL]:
+        bot_member = chat.get_member(context.bot.id)
+        if bot_member.can_invite_users:
+                invitelink = context.bot.exportChatInviteLink(chat.id)
+                msg.reply_text(invitelink)
         else:
-                if msg.chat.type == "private":
-                        msg.reply_text("This command is meant to use in chat not in PM")
-                        return ""
-                chat = update.effective_chat
-
-        if chat.username:
-                msg.reply_text(chat.username)
-        elif chat.type == chat.SUPERGROUP or chat.type == chat.CHANNEL:
-                bot_member = chat.get_member(context.bot.id)
-                if bot_member.can_invite_users:
-                        invitelink = context.bot.exportChatInviteLink(chat.id)
-                        msg.reply_text(invitelink)
-                else:
-                        msg.reply_text("I don't have access to the invite link, try changing my permissions!")
-        else:
-                msg.reply_text("I can only give you invite links for supergroups and channels, sorry!")
+                msg.reply_text("I don't have access to the invite link, try changing my permissions!")
+    else:
+        msg.reply_text("I can only give you invite links for supergroups and channels, sorry!")
 
 
 @run_async
 @typing_action
 def adminlist(update, context):
     administrators = update.effective_chat.get_administrators()
-    text = "Admins in <b>{}</b>:".format(update.effective_chat.title or "this chat")
+    text = f'Admins in <b>{update.effective_chat.title or "this chat"}</b>:'
     for admin in administrators:
         user = admin.user
         status = admin.status
         name = f"{(mention_html(user.id, user.first_name))}"
         if status == "creator":
             text += "\n 🦁 Creator:"
-            text += "\n • {} \n\n 🦊 Admin:".format(name)
+            text += f"\n • {name} \n\n 🦊 Admin:"
     for admin in administrators:
         user = admin.user
         status = admin.status
         name = f"{(mention_html(user.id, user.first_name))}"
         if status == "administrator":
-            text += "\n • {}".format(name)
+            text += f"\n • {name}"
     update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
@@ -272,7 +253,7 @@ def set_title(update, context):
         message.reply_text("This person CREATED the chat, how can i set custom title for him?")
         return
 
-    if not user_member.status == 'administrator':
+    if user_member.status != 'administrator':
         message.reply_text("Can't set title for non-admins!\nPromote them first to set custom title!")
         return
 
@@ -289,7 +270,10 @@ def set_title(update, context):
 
     try:
         context.bot.set_chat_administrator_custom_title(chat.id, user_id, title)
-        message.reply_text("Sucessfully set title for <b>{}</b> to <code>{}</code>!".format(user_member.user.first_name or user_id, title[:16]), parse_mode=ParseMode.HTML)
+        message.reply_text(
+            f"Sucessfully set title for <b>{user_member.user.first_name or user_id}</b> to <code>{title[:16]}</code>!",
+            parse_mode=ParseMode.HTML,
+        )
 
     except BadRequest:
         message.reply_text("I can't set custom title for admins that I didn't promote!")
@@ -373,8 +357,8 @@ def setchat_title(update, context):
        return
 
     try:
-       context.bot.set_chat_title(int(chat.id), str(title))
-       msg.reply_text(f"Successfully set <b>{title}</b> as new chat title!", parse_mode=ParseMode.HTML)
+        context.bot.set_chat_title(int(chat.id), title)
+        msg.reply_text(f"Successfully set <b>{title}</b> as new chat title!", parse_mode=ParseMode.HTML)
     except BadRequest as excp:
        msg.reply_text(f"Error! {excp.message}.")
        return
@@ -438,8 +422,7 @@ def set_desc(update, context):
 
 
 def __chat_settings__(chat_id, user_id):
-    return "You are *admin*: `{}`".format(
-        dispatcher.bot.get_chat_member(chat_id, user_id).status in ("administrator", "creator"))
+    return f'You are *admin*: `{dispatcher.bot.get_chat_member(chat_id, user_id).status in ("administrator", "creator")}`'
 
 
 __help__ = """
