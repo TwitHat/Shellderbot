@@ -34,7 +34,7 @@ def gtrans(update, context):
         translated = translator.translate(translate_text, dest=lang)
         trl = translated.src
         results = translated.text
-        msg.reply_text("Translated from {} to {}.\n {}".format(trl, lang, results))
+        msg.reply_text(f"Translated from {trl} to {lang}.\n {results}")
     except :
         msg.reply_text("Error! invalid language code.")
 
@@ -82,8 +82,7 @@ def spellcheck(update, context):
         for change in changes:
             start = change.get('From')
             end = change.get('To') + 1
-            suggestions = change.get('Suggestions')
-            if suggestions:
+            if suggestions := change.get('Suggestions'):
                 sugg_str = suggestions[0].get('Text')  # should look at this list more
                 curr_string += msg.text[prev_end:start] + sugg_str
                 prev_end = end
@@ -91,8 +90,8 @@ def spellcheck(update, context):
         curr_string += msg.text[prev_end:]
         update.effective_message.reply_text(curr_string)
     else:
-       update.effective_message.reply_text(
-              "Reply to some message to get grammar corrected text!")
+        update.effective_message.reply_text(
+               "Reply to some message to get grammar corrected text!")
 
 
 __help__ = """

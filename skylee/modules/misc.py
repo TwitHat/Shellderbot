@@ -31,31 +31,32 @@ from skylee.modules.helper_funcs.alternate import typing_action, send_action
 @typing_action
 def get_id(update, context):
     args = context.args
-    user_id = extract_user(update.effective_message, args)
-    if user_id:
+    if user_id := extract_user(update.effective_message, args):
         if update.effective_message.reply_to_message and update.effective_message.reply_to_message.forward_from:
             user1 = update.effective_message.reply_to_message.from_user
             user2 = update.effective_message.reply_to_message.forward_from
             update.effective_message.reply_text(
-                "The original sender, {}, has an ID of `{}`.\nThe forwarder, {}, has an ID of `{}`.".format(
-                    escape_markdown(user2.first_name),
-                    user2.id,
-                    escape_markdown(user1.first_name),
-                    user1.id),
-                parse_mode=ParseMode.MARKDOWN)
+                f"The original sender, {escape_markdown(user2.first_name)}, has an ID of `{user2.id}`.\nThe forwarder, {escape_markdown(user1.first_name)}, has an ID of `{user1.id}`.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
         else:
             user = context.bot.get_chat(user_id)
-            update.effective_message.reply_text("{}'s id is `{}`.".format(escape_markdown(user.first_name), user.id),
-                                                parse_mode=ParseMode.MARKDOWN)
+            update.effective_message.reply_text(
+                f"{escape_markdown(user.first_name)}'s id is `{user.id}`.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
     else:
         chat = update.effective_chat  # type: Optional[Chat]
         if chat.type == "private":
-            update.effective_message.reply_text("Your id is `{}`.".format(chat.id),
-                                                parse_mode=ParseMode.MARKDOWN)
+            update.effective_message.reply_text(
+                f"Your id is `{chat.id}`.", parse_mode=ParseMode.MARKDOWN
+            )
 
         else:
-            update.effective_message.reply_text("This group's id is `{}`.".format(chat.id),
-                                                parse_mode=ParseMode.MARKDOWN)
+            update.effective_message.reply_text(
+                f"This group's id is `{chat.id}`.",
+                parse_mode=ParseMode.MARKDOWN,
+            )
 
 
 @run_async
@@ -82,27 +83,22 @@ def info(update, context):
 
     del_msg = msg.reply_text("Hold tight while I steal some data from <b>FBI Database</b>...", parse_mode=ParseMode.HTML)
 
-    text = "<b>USER INFO</b>:" \
-           "\n\nID: <code>{}</code>" \
-           "\nFirst Name: {}".format(user.id, html.escape(user.first_name))
+    text = f"<b>USER INFO</b>:\n\nID: <code>{user.id}</code>\nFirst Name: {html.escape(user.first_name)}"
 
     if user.last_name:
-        text += "\nLast Name: {}".format(html.escape(user.last_name))
+        text += f"\nLast Name: {html.escape(user.last_name)}"
 
     if user.username:
-        text += "\nUsername: @{}".format(html.escape(user.username))
+        text += f"\nUsername: @{html.escape(user.username)}"
 
-    text += "\nPermanent user link: {}".format(mention_html(user.id, "link"))
+    text += f'\nPermanent user link: {mention_html(user.id, "link")}'
 
-    text += "\nNumber of profile pics: {}".format(context.bot.get_user_profile_photos(user.id).total_count)
+    text += f"\nNumber of profile pics: {context.bot.get_user_profile_photos(user.id).total_count}"
 
     try:
-        sw = spamwtc.get_ban(int(user.id))
-        if sw:
-           text +='\n\n<b>This person is banned in Spamwatch!</b>'
-           text += f'\nResason: <pre>{sw.reason}</pre>'
-        else:
-           pass
+        if sw := spamwtc.get_ban(int(user.id)):
+            text +='\n\n<b>This person is banned in Spamwatch!</b>'
+            text += f'\nResason: <pre>{sw.reason}</pre>'
     except:
         pass # Don't break on exceptions like if api is down?
 
@@ -123,7 +119,7 @@ def info(update, context):
 
     try:
         memstatus = chat.get_member(user.id).status
-        if memstatus == 'administrator' or memstatus == 'creator':
+        if memstatus in ['administrator', 'creator']:
             result = context.bot.get_chat_member(chat.id, user.id)
             if result.custom_title:
                 text += f"\n\nThis user has custom title <b>{result.custom_title}</b> in this chat."
@@ -219,7 +215,7 @@ def markdown_help(update, context):
 def wiki(update, context):
     kueri = re.split(pattern="wiki", string=update.effective_message.text)
     wikipedia.set_lang("en")
-    if len(str(kueri[1])) == 0:
+    if not str(kueri[1]):
         update.effective_message.reply_text("Enter keywords!")
     else:
         try:
@@ -272,36 +268,33 @@ def src(update, context):
 @run_async
 @send_action(ChatAction.UPLOAD_PHOTO)
 def wall(update, context):
-    chat_id = update.effective_chat.id
     msg = update.effective_message
-    msg_id = update.effective_message.message_id
     args = context.args
-    query = " ".join(args)
-    if not query:
-        msg.reply_text("Please enter a query!")
-        return
-    else:
-        caption = query
+    if query := " ".join(args):
         term = query.replace(" ", "%20")
         json_rep = r.get(f"https://wall.alphacoders.com/api2.0/get.php?auth={WALL_API}&method=search&term={term}").json()
+        chat_id = update.effective_chat.id
+        msg_id = update.effective_message.message_id
         if not json_rep.get("success"):
             msg.reply_text("An error occurred!")
 
+        elif wallpapers := json_rep.get("wallpapers"):
+            index = randint(0, len(wallpapers)-1) # Choose random index
+            wallpaper = wallpapers[index]
+            wallpaper = wallpaper.get("url_image")
+            wallpaper = wallpaper.replace("\\", "")
+            caption = query
+            context.bot.send_photo(chat_id, photo=wallpaper, caption='Preview',
+            reply_to_message_id=msg_id, timeout=60)
+            context.bot.send_document(chat_id, document=wallpaper,
+            filename='wallpaper', caption=caption, reply_to_message_id=msg_id,
+            timeout=60)
         else:
-            wallpapers = json_rep.get("wallpapers")
-            if not wallpapers:
-                msg.reply_text("No results found! Refine your search.")
-                return
-            else:
-                index = randint(0, len(wallpapers)-1) # Choose random index
-                wallpaper = wallpapers[index]
-                wallpaper = wallpaper.get("url_image")
-                wallpaper = wallpaper.replace("\\", "")
-                context.bot.send_photo(chat_id, photo=wallpaper, caption='Preview',
-                reply_to_message_id=msg_id, timeout=60)
-                context.bot.send_document(chat_id, document=wallpaper,
-                filename='wallpaper', caption=caption, reply_to_message_id=msg_id,
-                timeout=60)
+            msg.reply_text("No results found! Refine your search.")
+            return
+    else:
+        msg.reply_text("Please enter a query!")
+        return
 
 @run_async
 @typing_action
@@ -350,10 +343,10 @@ def rmemes(update, context):
     else:
        res = res.json()
 
-    rpage = res.get(str('subreddit')) # Subreddit
-    title = res.get(str('title')) # Post title
-    memeu = res.get(str('url')) # meme pic url
-    plink = res.get(str('postLink'))
+    rpage = res.get('subreddit')
+    title = res.get('title')
+    memeu = res.get('url')
+    plink = res.get('postLink')
 
     caps = f"× <b>Title</b>: {title}\n"
     caps += f"× <b>Subreddit:</b> <pre>r/{rpage}</pre>"

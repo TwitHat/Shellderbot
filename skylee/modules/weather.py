@@ -13,7 +13,7 @@ from skylee.modules.helper_funcs.alternate import typing_action
 def weather(update, context):
     args = context.args
     if len(args) == 0:
-        reply = f'Write a location to check the weather.'
+        reply = 'Write a location to check the weather.'
         del_msg = update.effective_message.reply_text("{}".format(reply),
                                parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
         time.sleep(5)
@@ -21,7 +21,10 @@ def weather(update, context):
             del_msg.delete()
             update.effective_message.delete()
         except BadRequest as err:
-            if (err.message == "Message to delete not found" ) or (err.message == "Message can't be deleted" ):
+            if err.message in [
+                "Message to delete not found",
+                "Message can't be deleted",
+            ]:
                 return
 
         return
@@ -31,7 +34,7 @@ def weather(update, context):
     request = requests.get(url)
     result = json.loads(request.text)
     if request.status_code != 200:
-        reply = f'Location not valid.'
+        reply = 'Location not valid.'
         del_msg = update.effective_message.reply_text("{}".format(reply),
                                parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
         time.sleep(5)
@@ -39,7 +42,10 @@ def weather(update, context):
             del_msg.delete()
             update.effective_message.delete()
         except BadRequest as err:
-            if (err.message == "Message to delete not found" ) or (err.message == "Message can't be deleted" ):
+            if err.message in [
+                "Message to delete not found",
+                "Message can't be deleted",
+            ]:
                 return
         return
 
@@ -82,6 +88,7 @@ def weather(update, context):
         c = k if ( c > (k - 1) ) and ( c < k ) else c
         temp = str(round((c - k)))
         return temp
+
     def fahr(c):
         c1 = 9/5
         c2 = 459.67
@@ -99,7 +106,10 @@ def weather(update, context):
         del_msg.delete()
         update.effective_message.delete()
     except BadRequest as err:
-        if (err.message == "Message to delete not found" ) or (err.message == "Message can't be deleted" ):
+        if err.message in [
+            "Message to delete not found",
+            "Message can't be deleted",
+        ]:
             return
 
 __help__ = """

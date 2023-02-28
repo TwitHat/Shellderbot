@@ -18,42 +18,44 @@ async def is_administrator(user_id: int, message):
 
 @client.on(events.NewMessage(pattern='^/purge'))
 async def purge(event):
-        chat = event.chat_id
-        msgs = []
+    chat = event.chat_id
+    msgs = []
 
-        if not await is_administrator(user_id=event.from_id, message=event):
-           await event.reply("You're not an admin!")
-           return
+    if not await is_administrator(user_id=event.from_id, message=event):
+       await event.reply("You're not an admin!")
+       return
 
-        msg = await event.get_reply_message()
-        if not msg:
-           await event.reply("Reply to a message to select where to start purging from.")
-           return
+    msg = await event.get_reply_message()
+    if not msg:
+       await event.reply("Reply to a message to select where to start purging from.")
+       return
 
-        try:
-           msg_id = msg.id
-           to_delete = event.message.id - 1
-           await event.client.delete_messages(chat, event.message.id)
-           msgs.append(event.reply_to_msg_id)
-           for m_id in range(to_delete, msg_id - 1, -1):
-               msgs.append(m_id)
-               if len(msgs) == 100:
-                   await event.client.delete_messages(chat, msgs)
-                   msgs = []
+    try:
+        msg_id = msg.id
+        to_delete = event.message.id - 1
+        await event.client.delete_messages(chat, event.message.id)
+        msgs.append(event.reply_to_msg_id)
+        for m_id in range(to_delete, msg_id - 1, -1):
+            msgs.append(m_id)
+            if len(msgs) == 100:
+                await event.client.delete_messages(chat, msgs)
+                msgs = []
 
-           await event.client.delete_messages(chat, msgs)
-           del_res = await event.client.send_message(
-           event.chat_id, "Flash purge complete!")
+        await event.client.delete_messages(chat, msgs)
+        del_res = await event.client.send_message(
+        event.chat_id, "Flash purge complete!")
 
-           await asyncio.sleep(4)
-           await del_res.delete()
+        await asyncio.sleep(4)
+        await del_res.delete()
 
-        except MessageDeleteForbiddenError:
-            text = "Failed to delete messages.\n"
-            text += "Messages maybe too old or I'm not admin! or dont have delete rights!"
-            del_res = await event.respond(text, parse_mode='md')
-            await asyncio.sleep(5)
-            await del_res.delete()
+    except MessageDeleteForbiddenError:
+        text = (
+            "Failed to delete messages.\n"
+            + "Messages maybe too old or I'm not admin! or dont have delete rights!"
+        )
+        del_res = await event.respond(text, parse_mode='md')
+        await asyncio.sleep(5)
+        await del_res.delete()
 
 
 @client.on(events.NewMessage(pattern="^/del$"))

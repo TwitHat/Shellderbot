@@ -18,21 +18,21 @@ from skylee.modules.helper_funcs.alternate import typing_action
 def about_me(update, context):
     message = update.effective_message  # type: Optional[Message]
     args = context.args
-    user_id = extract_user(message, args)
-
-    if user_id:
+    if user_id := extract_user(message, args):
         user = bot.get_chat(user_id)
     else:
         user = message.from_user
 
-    info = sql.get_user_me_info(user.id)
-
-    if info:
-        update.effective_message.reply_text("*{}*:\n{}".format(user.first_name, escape_markdown(info)),
-                                            parse_mode=ParseMode.MARKDOWN)
+    if info := sql.get_user_me_info(user.id):
+        update.effective_message.reply_text(
+            f"*{user.first_name}*:\n{escape_markdown(info)}",
+            parse_mode=ParseMode.MARKDOWN,
+        )
     elif message.reply_to_message:
         username = message.reply_to_message.from_user.first_name
-        update.effective_message.reply_text(username + "Information about him is currently unavailable !")
+        update.effective_message.reply_text(
+            f"{username}Information about him is currently unavailable !"
+        )
     else:
         update.effective_message.reply_text("You have not added any information about yourself yet !")
 
@@ -41,16 +41,17 @@ def about_me(update, context):
 @typing_action
 def set_about_me(update, context):
     message = update.effective_message  # type: Optional[Message]
-    user_id = message.from_user.id
     text = message.text
     info = text.split(None, 1)  # use python's maxsplit to only remove the cmd, hence keeping newlines.
     if len(info) == 2:
         if len(info[1]) < MAX_MESSAGE_LENGTH // 4:
+            user_id = message.from_user.id
             sql.set_user_me_info(user_id, info[1])
             message.reply_text("Your bio has been saved successfully")
         else:
             message.reply_text(
-                " About You{} To be confined to letters ".format(MAX_MESSAGE_LENGTH // 4, len(info[1])))
+                f" About You{MAX_MESSAGE_LENGTH // 4} To be confined to letters "
+            )
 
 
 @run_async
@@ -59,20 +60,21 @@ def about_bio(update, context):
     message = update.effective_message  # type: Optional[Message]
     args = context.args
 
-    user_id = extract_user(message, args)
-    if user_id:
+    if user_id := extract_user(message, args):
         user = context.bot.get_chat(user_id)
     else:
         user = message.from_user
 
-    info = sql.get_user_bio(user.id)
-
-    if info:
-        update.effective_message.reply_text("*{}*:\n{}".format(user.first_name, escape_markdown(info)),
-                                            parse_mode=ParseMode.MARKDOWN)
+    if info := sql.get_user_bio(user.id):
+        update.effective_message.reply_text(
+            f"*{user.first_name}*:\n{escape_markdown(info)}",
+            parse_mode=ParseMode.MARKDOWN,
+        )
     elif message.reply_to_message:
         username = user.first_name
-        update.effective_message.reply_text("{} No details about him have been saved yet !".format(username))
+        update.effective_message.reply_text(
+            f"{username} No details about him have been saved yet !"
+        )
     else:
         update.effective_message.reply_text(" Your bio  about you has been saved !")
 
@@ -97,11 +99,13 @@ def set_about_bio(update, context):
         if len(bio) == 2:
             if len(bio[1]) < MAX_MESSAGE_LENGTH // 4:
                 sql.set_user_bio(user_id, bio[1])
-                message.reply_text("{} bio has been successfully saved!".format(repl_message.from_user.first_name))
+                message.reply_text(
+                    f"{repl_message.from_user.first_name} bio has been successfully saved!"
+                )
             else:
                 message.reply_text(
-                    "About you {} Must stick to the letter! The number of characters you have just tried {} hm .".format(
-                        MAX_MESSAGE_LENGTH // 4, len(bio[1])))
+                    f"About you {MAX_MESSAGE_LENGTH // 4} Must stick to the letter! The number of characters you have just tried {len(bio[1])} hm ."
+                )
     else:
         message.reply_text(" His bio can only be saved if someone MESSAGE as a REPLY")
 
